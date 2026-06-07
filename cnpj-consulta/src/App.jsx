@@ -44,8 +44,37 @@ function situacaoBadge(s) {
   const t=s.toUpperCase()
   if(t.includes('ATIVA')) return <Badge text={s} color="green"/>
   if(t.includes('BAIXADA')) return <Badge text={s} color="red"/>
-  if(t.includes('SUSPENSA')) return <Badge text={s} color="yellow"/>
+  if(t.includes('SUSPENSA')||t.includes('INAPTA')) return <Badge text={s} color="yellow"/>
   return <Badge text={s} color="gray"/>
+}
+
+function SituacaoCard({situacao}) {
+  if(!situacao) return null
+  const t = situacao.toUpperCase()
+  const isAtiva = t.includes('ATIVA') && !t.includes('INAPTA')
+  const isInapta = t.includes('INAPTA')
+  const isBaixada = t.includes('BAIXADA')
+  const isSuspensa = t.includes('SUSPENSA')
+
+  let label, icon, bg, textColor, border
+  if(isAtiva)    { label='APTA';    bg='bg-green-50';  border='border-green-200'; textColor='text-green-700'; icon='✓' }
+  else if(isInapta)  { label='INAPTA';  bg='bg-yellow-50'; border='border-yellow-200'; textColor='text-yellow-700'; icon='!' }
+  else if(isBaixada) { label='BAIXADA'; bg='bg-red-50';    border='border-red-200';    textColor='text-red-700';    icon='✕' }
+  else if(isSuspensa){ label='SUSPENSA';bg='bg-orange-50'; border='border-orange-200'; textColor='text-orange-700'; icon='⚠' }
+  else               { label=situacao;  bg='bg-gray-50';   border='border-gray-200';   textColor='text-gray-700';   icon='?' }
+
+  return (
+    <div className={`rounded-xl border ${bg} ${border} p-4 col-span-2`}>
+      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Situação Cadastral</p>
+      <div className="flex items-center gap-3">
+        <span className={`w-9 h-9 flex items-center justify-center rounded-full text-lg font-bold ${bg} ${textColor} border-2 ${border}`}>{icon}</span>
+        <div>
+          <p className={`text-xl font-bold ${textColor}`}>{label}</p>
+          <p className="text-xs text-gray-500">{situacao}</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function DynamicValue({label, value}) {
@@ -93,7 +122,7 @@ function DynamicObject({data}) {
   )
 }
 
-const SKIP_IN_SUMMARY = ['razao_social','nome_fantasia','descricao_situacao_cadastral','logradouro','numero','complemento','bairro','municipio','uf','cep','ddd_telefone_1','ddd_telefone_2','email','cnae_fiscal_descricao','capital_social','inscricoes_estaduais']
+const SKIP_IN_SUMMARY = ['razao_social','nome_fantasia','descricao_situacao_cadastral','logradouro','numero','complemento','bairro','municipio','uf','cep','ddd_telefone_1','ddd_telefone_2','email','cnae_fiscal_descricao','capital_social','inscricoes_estaduais','pais']
 
 function InfoCard({label,value,full=false}) {
   if(!value&&value!==0) return null
@@ -137,7 +166,8 @@ export default function App() {
 
   const telefone = data ? [data.ddd_telefone_1,data.ddd_telefone_2].filter(Boolean).map(t=>formatPhone(t.replace(/\D/g,''))).join(' / ') : ''
   const endereco = data ? `${data.logradouro||''}, ${data.numero||''} ${data.complemento||''} — ${data.bairro||''}`.replace(/\s+/g,' ').trim() : ''
-  const cidadeUF = data ? `${data.municipio?.descricao||''} / ${data.uf||''}` : ''
+  const cidade = data ? data.municipio?.descricao||'' : ''
+  const pais = data ? (data.pais?.descricao || data.pais || 'Brasil') : ''
 
   const extraData = data ? Object.fromEntries(Object.entries(data).filter(([k])=>!SKIP_IN_SUMMARY.includes(k))) : {}
   const filled = data ? countFilledFields(data) : 0
@@ -220,10 +250,17 @@ export default function App() {
               </div>
             </div>
 
+            {/* Situação destacada */}
+            <div className="grid grid-cols-2 gap-3">
+              <SituacaoCard situacao={data.descricao_situacao_cadastral}/>
+            </div>
+
             {/* Summary grid */}
             <div className="grid grid-cols-2 gap-3">
               <InfoCard label="Endereço" value={endereco} full/>
-              <InfoCard label="Cidade / UF" value={cidadeUF}/>
+              <InfoCard label="Cidade" value={cidade}/>
+              <InfoCard label="Estado (UF)" value={data.uf}/>
+              <InfoCard label="País" value={pais}/>
               <InfoCard label="CEP" value={data.cep?formatCEP(data.cep):''}/>
               <InfoCard label="CNAE Principal" value={data.cnae_fiscal_descricao} full/>
               <InfoCard label="Telefone" value={telefone} full/>
